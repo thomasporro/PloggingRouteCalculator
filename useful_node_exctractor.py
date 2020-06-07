@@ -18,6 +18,21 @@ waylist = doc.getElementsByTagName('way')
 
 #Check all the nodes of all ways
 for way in waylist:
+
+    #Extract the tags to check if the way is a building
+    tags_child_nodes = way.getElementsByTagName('tag')
+
+    #Boolean to check if one tag is "building"
+    there_is_building = True
+    for tags_child in tags_child_nodes:
+        if(tags_child.getAttribute("k") == "highway"):
+            there_is_building = False
+        
+    #If it's a building skip the way
+    if(there_is_building):
+        continue
+
+    #Gets all the child nodes
     child_nodes = way.getElementsByTagName('nd')
     
     #Counter used to check if the node is at the start
@@ -46,7 +61,7 @@ for way in waylist:
 
 
 #Opens the document where will be written the data
-osm_file = open('data/final_file.osm', 'w')
+osm_file = open('data/useful_nodes.osm', 'w')
 osm_file.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"+"\n")
 osm_file.write("<osm version=\"0.6\">"+"\n")
 
@@ -63,4 +78,4 @@ for node in nodelist:
 
 #Close the file
 osm_file.write("</osm>")
-osm_file.close()      
+osm_file.close()

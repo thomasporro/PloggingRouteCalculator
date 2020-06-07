@@ -12,6 +12,7 @@ osm_file.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"+"\n")
 osm_file.write("<osm version=\"0.6\">"+"\n")
 
 print(waylist[0].nodeName())
+
 #Writes all the relevant nodes to the file
 #for node in selected_nodes:
  #   osm_file.write(node.toxml()+"\n")
