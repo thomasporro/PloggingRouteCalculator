@@ -1,8 +1,10 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 from xml.dom import minidom
+import math
 
 # EXAMPLE show_graph(load_to_graph('data/final_file.osm'))
+
 
 def load_to_graph(file_path):
     """
@@ -49,3 +51,20 @@ def show_graph(G, path = None) :
 
     plt.show()
 
+# TODO comments adaguately this lines
+def calculate_distance(first_lat, first_long, second_lat, second_long):
+    RADIUS = 6371000
+    phi_1 = degree_to_radiants(first_lat)
+    phi_2 = degree_to_radiants(second_lat)
+    delta_phi = degree_to_radiants(second_lat-first_lat)
+    delta_lambda = degree_to_radiants(second_long-first_long)
+
+    a = (math.sin(phi_2/2)**2) * math.cos(phi_1) * math.cos(phi_2) * (math.sin(delta_lambda/2)**2)
+
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+    return RADIUS * c
+
+
+def degree_to_radiants(angle):
+    return angle * math.pi / 180
