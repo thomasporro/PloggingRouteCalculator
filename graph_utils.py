@@ -1,10 +1,12 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 from xml.dom import minidom
+import random
 import math
 
 # EXAMPLE show_graph(load_to_graph('data/final_file.osm'))
-
+#       graph = load_to_graph('data/final_file.osm')
+#       nx.get_edge_attributes(graph, 'garbage')
 
 def load_to_graph(file_path):
     """
@@ -28,8 +30,21 @@ def load_to_graph(file_path):
     for way in waylist:
         intersections = way.getElementsByTagName('nd')
         for indx in range(0, len(intersections)-1):
-            G.add_edge(intersections[indx].getAttribute('ref'), intersections[indx+1].getAttribute('ref'))
-    
+            pos = nx.get_node_attributes(G,'pos')
+            length = geodesic_dist(float(pos[intersections[indx].getAttribute('ref')][0]),
+                                    float(pos[intersections[indx].getAttribute('ref')][1]),
+                                     float(pos[intersections[indx+1].getAttribute('ref')][0]),
+                                      float(pos[intersections[indx+1].getAttribute('ref')][1]))
+
+            garbage = 0
+            rand = random.random()
+            if 0.85 < rand < 0.95: garbage=1
+            elif rand > 0.95: garbage=2
+
+            G.add_edge(intersections[indx].getAttribute('ref'),
+                        intersections[indx+1].getAttribute('ref'),
+                         length = length, garbage = garbage)
+
     return G
 
 
@@ -51,20 +66,22 @@ def show_graph(G, path = None) :
 
     plt.show()
 
-# TODO comments adaguately this lines
-def calculate_distance(first_lat, first_long, second_lat, second_long):
-    RADIUS = 6371000
-    phi_1 = degree_to_radiants(first_lat)
-    phi_2 = degree_to_radiants(second_lat)
-    delta_phi = degree_to_radiants(second_lat-first_lat)
-    delta_lambda = degree_to_radiants(second_long-first_long)
 
-    a = (math.sin(phi_2/2)**2) * math.cos(phi_1) * math.cos(phi_2) * (math.sin(delta_lambda/2)**2)
+def geodesic_dist(lat1, lon1, lat2, lon2):
+    """
+    Approximate the distance on the earth between two 
+    points in longitude, latitude format.
+    params: coordinates of the points in degrees lat1, lon1, lat2, lon2.
+    returns: distance in m between the points.
+    """
+    # approximate radius of earth in m
+    R = 6373000.0
 
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    dlon = math.radians(lon2) - math.radians(lon1)
+    dlat = math.radians(lat2) - math.radians(lat1)
 
-    return RADIUS * c
+    a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
+    return R * c
 
-def degree_to_radiants(angle):
-    return angle * math.pi / 180
