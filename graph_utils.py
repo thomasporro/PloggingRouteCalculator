@@ -53,12 +53,16 @@ def show_graph(G, path = None) :
     Display nx graph G
     params: 
         - G: graph to display
-        - path: edges to draw in a different color none by default
+        - path: list of edges to draw in a different color, None by default
+            example [('6463933402', '6463933405'), ('6463933404', '6463933405'), ('6463933405', '6463933406')]
     """
 
     pos=nx.get_node_attributes(G,'pos')
     plt.figure()
     nx.draw(G, pos=pos, node_size=1)
+
+    if path!=None:
+        nx.draw_networkx_edges(G,pos,edgelist=path,edge_color='r',width=2)
 
     #fullscreen
     figManager = plt.get_current_fig_manager()
@@ -85,3 +89,4 @@ def geodesic_dist(lat1, lon1, lat2, lon2):
 
     return R * c
 
+show_graph(load_to_graph('data/final_file.osm'))
