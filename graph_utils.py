@@ -2,7 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from xml.dom import minidom
 import random
-import math
+import math, time
 
 # EXAMPLE show_graph(load_to_graph('data/final_file.osm'))
 #       graph = load_to_graph('data/final_file.osm')
@@ -88,3 +88,84 @@ def geodesic_dist(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
     return R * c
+
+
+def generate_tree_BFS(tree, graph, root):
+    """
+    Generate tree in a dict of pairs (son:parent) from
+    graph using bfs starting frome the node root.
+    params: tree is an empty dict where the tree will be saved, graph and starting node
+    returns: list of edges that generate cycles
+    """
+    cycle_edges=[]
+    tree[root] = 0
+    front =[root]
+    visited_nodes=[]
+    cycle_edges=[]
+
+    for node in front:
+        neighbors = graph.neighbors(node)
+        visited_nodes.append(node)
+        for neighbor in neighbors:
+            if tree[node] != neighbor and (node, neighbor) not in cycle_edges:
+                if neighbor in visited_nodes and (node, neighbor) not in cycle_edges:
+                    cycle_edges.append((neighbor, node))
+                if neighbor not in front:
+                    front.append(neighbor)
+                    tree[neighbor]=node
+    return cycle_edges
+
+def find_cycles(tree, cycle_edges):
+    """
+    find cycles by selecting edges that close a path in the tree
+    """
+    cycles=[]
+    for edge in cycle_edges:
+        cycle=[]
+        node_a=edge[0]
+        node_b=edge[1]
+        while tree[node_a]!=0:
+            cycle.append((node_a, tree[node_a]))
+            node_a = tree[node_a]
+        while tree[node_b]!=0:
+            cycle.append((node_b, tree[node_b]))
+            node_b = tree[node_b]
+        cycle.append(edge)
+        cycles.append(cycle)
+    return cycles
+
+def find_best_cycle(graph, cycles, length, min_g):
+    """
+    find cycle that best fits requirements
+    """
+    best_cycle=[]
+    best_len=0
+
+    garbage_edges=nx.get_edge_attributes(graph, 'garbage')
+    length_edges=nx.get_edge_attributes(graph, 'length')
+
+    for cycle in cycles:
+        total_l=0
+        total_g=0
+
+        for edge in cycle:
+            if edge in length_edges:
+                total_l+=length_edges[edge]
+                total_g+=garbage_edges[edge]
+            else:
+                total_l+=length_edges[edge[::-1]]
+                total_g+=garbage_edges[edge[::-1]]
+
+        if abs(best_len-length) > abs(total_l-length) and total_g>=min_g:
+            best_len=total_l
+            best_cycle=cycle
+
+    print('len: '+str(best_len))
+    return best_cycle
+
+
+# just for testing, remove once put in main
+graph = load_to_graph('data/final_file.osm')
+tree ={}
+cycles=find_cycles(tree, generate_tree_BFS(tree, graph, '298177687'))
+show_graph(graph, find_best_cycle(graph, cycles, 4000, 3))
