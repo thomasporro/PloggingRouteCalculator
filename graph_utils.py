@@ -14,7 +14,7 @@ def load_to_graph(file_path):
     params: file_path = path to the .osm file
     returns: networkx graph
     """
-
+    
     G = nx.Graph(file=file_path)
     
     xml_doc = minidom.parse(file_path)
@@ -25,6 +25,7 @@ def load_to_graph(file_path):
     # load nodes
     for node in nodelist:
         G.add_node(node.getAttribute('id'), pos=(float(node.getAttribute('lat')), float(node.getAttribute('lon'))) )
+
 
     # load edges
     for way in waylist:
@@ -44,7 +45,6 @@ def load_to_graph(file_path):
             G.add_edge(intersections[indx].getAttribute('ref'),
                         intersections[indx+1].getAttribute('ref'),
                          length = length, garbage = garbage)
-
     return G
 
 
@@ -65,8 +65,8 @@ def show_graph(G, path = None) :
         nx.draw_networkx_edges(G,pos,edgelist=path,edge_color='r',width=2)
 
     #fullscreen
-    figManager = plt.get_current_fig_manager()
-    figManager.full_screen_toggle()
+    #figManager = plt.get_current_fig_manager()
+    #figManager.full_screen_toggle()
 
     plt.show()
 
@@ -113,59 +113,89 @@ def generate_tree_BFS(tree, graph, root):
                 if neighbor not in front:
                     front.append(neighbor)
                     tree[neighbor]=node
+
     return cycle_edges
 
-def find_cycles(tree, cycle_edges):
+def find_best_cycle(graph, tree, root, cycle_edges, deviation_probs, length, min_g):
     """
-    find cycles by selecting edges that close a path in the tree
-    """
-    cycles=[]
-    for edge in cycle_edges:
-        cycle=[]
-        node_a=edge[0]
-        node_b=edge[1]
-        while tree[node_a]!=0:
-            cycle.append((node_a, tree[node_a]))
-            node_a = tree[node_a]
-        while tree[node_b]!=0:
-            cycle.append((node_b, tree[node_b]))
-            node_b = tree[node_b]
-        cycle.append(edge)
-        cycles.append(cycle)
-    return cycles
-
-def find_best_cycle(graph, cycles, length, min_g):
-    """
-    find cycle that best fits requirements
+    find cycles by selecting edges that close a path in the tree and
+    return the best one with respect to the parameters
+    params:
+        graph: the graph 
+        tree: tree produced by generate_tree_BFS
+        root: root node of the tree
+        cycle_edges: edges that connect two nodes of the tree forming a cycle
+        deviation_probs: list of probabilities of taking another
+            cycle edge encountered on the path to the root
+        length: length of the path to find
+        min_g: minimum quantityof garbage on the path
+    returns best cycle found
     """
     best_cycle=[]
     best_len=0
-
+    
+    cycle_nodes_dict={}
+    for edge in cycle_edges:
+        for node in edge:
+            if node in cycle_nodes_dict:
+                cycle_nodes_dict[node].append(edge)
+            else:
+                cycle_nodes_dict[node] =[edge]
+    
     garbage_edges=nx.get_edge_attributes(graph, 'garbage')
     length_edges=nx.get_edge_attributes(graph, 'length')
 
-    for cycle in cycles:
-        total_l=0
-        total_g=0
+    for edge in cycle_edges:
+        # for both nodes in the edge return to the root through the tree
+        for prob in deviation_probs:
+            # at each node encountered connected to a cycle edge change path with probability prob
+            cycle=[]
+            node_a=edge[0]
+            node_b=edge[1]
+            
+            while tree[node_a]!=0: #not root
+                cycle.append((node_a, tree[node_a]))
+                node_a = tree[node_a]
+                
+                if node_a in cycle_nodes_dict and random.random()<prob:
+                    
+                    selected_edge=cycle_nodes_dict[node_a][random.randint(0, len(cycle_nodes_dict[node_a])-1) ]
+                    if node_a == selected_edge[0]:
+                        node_a=selected_edge[1]
+                    else:
+                        node_a=selected_edge[0]
 
-        for edge in cycle:
-            if edge in length_edges:
-                total_l+=length_edges[edge]
-                total_g+=garbage_edges[edge]
-            else:
-                total_l+=length_edges[edge[::-1]]
-                total_g+=garbage_edges[edge[::-1]]
+            cycle.reverse() #just to keep the edges of the cycle in order
 
-        if abs(best_len-length) > abs(total_l-length) and total_g>=min_g:
-            best_len=total_l
-            best_cycle=cycle
+            cycle.append(edge)
+            
+            while tree[node_b]!=0:
+                cycle.append((node_b, tree[node_b]))
+                node_b = tree[node_b]
+                if node_b in cycle_nodes_dict and random.random()<prob:
+                    
+                    selected_edge=cycle_nodes_dict[node_b][random.randint(0, len(cycle_nodes_dict[node_b])-1) ]
+                    if node_b == selected_edge[0]:
+                        node_b=selected_edge[1]
+                    else:
+                        node_b=selected_edge[0]
+
+            total_l=0
+            total_g=0
+
+            for edge in cycle:
+                if edge in length_edges:
+                    total_l+=length_edges[edge]
+                    total_g+=garbage_edges[edge]
+                else:
+                    total_l+=length_edges[edge[::-1]]
+                    total_g+=garbage_edges[edge[::-1]]
+
+            if abs(best_len-length) > abs(total_l-length) and total_g>=min_g:
+                best_len=total_l
+                best_cycle=cycle
 
     print('len: '+str(best_len))
+
     return best_cycle
 
-
-# just for testing, remove once put in main
-graph = load_to_graph('data/final_file.osm')
-tree ={}
-cycles=find_cycles(tree, generate_tree_BFS(tree, graph, '298177687'))
-show_graph(graph, find_best_cycle(graph, cycles, 4000, 3))
